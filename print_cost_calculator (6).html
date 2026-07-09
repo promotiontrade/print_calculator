@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор себестоимости печати</title>
+<style>
+  :root{
+    --paper:#F5F2EC;
+    --paper-2:#EDE8DE;
+    --ink:#1A1A1A;
+    --ink-soft:#4A4A46;
+    --line:#D8D2C4;
+    --cyan:#00AEEF;
+    --magenta:#EC008C;
+    --yellow:#F2C400;
+    --key:#1A1A1A;
+    --good:#1E7A4C;
+    --bad:#B3261E;
+    --mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    padding:32px 20px 80px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:24px;
+    margin-bottom:28px;
+    padding-bottom:20px;
+    border-bottom:2px solid var(--ink);
+  }
+  .title-block h1{font-size:26px;margin:0 0 4px;letter-spacing:-0.02em;font-weight:700;}
+  .title-block p{margin:0;color:var(--ink-soft);font-size:14px;}
+  .regmark{width:56px;height:56px;flex-shrink:0;}
+
+  .grid{display:grid;grid-template-columns: 380px 1fr;gap:20px;align-items:start;}
+  @media (max-width:900px){ .grid{grid-template-columns:1fr;} }
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:4px;padding:22px;}
+  .card + .card{margin-top:20px;}
+  .card h2{
+    font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);
+    margin:0 0 16px;display:flex;align-items:center;gap:8px;
+  }
+  .card h2::before{content:'';width:8px;height:8px;background:var(--magenta);display:inline-block;border-radius:50%;}
+
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--ink);}
+  .field{margin-bottom:16px;}
+  .hint{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+
+  select, input[type=number]{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:3px;
+    font-family:var(--mono);font-size:14px;background:var(--paper);color:var(--ink);
+  }
+  select:focus, input:focus{outline:2px solid var(--cyan);outline-offset:1px;}
+  input:disabled, select:disabled{opacity:.4;background:#eee;}
+
+  .hero-number{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;}
+  .hero-number .val{font-family:var(--mono);font-size:44px;font-weight:700;line-height:1;}
+  .hero-number .unit{font-size:14px;color:var(--ink-soft);}
+  .hero-sub{font-size:13px;color:var(--ink-soft);margin-bottom:20px;}
+
+  .breakdown{border-top:1px dashed var(--line);padding-top:14px;margin-top:6px;}
+  .row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid #f0ede6;}
+  .row span:first-child{color:var(--ink-soft);}
+  .row span:last-child{font-family:var(--mono);font-weight:600;}
+  .row.total span{color:var(--ink) !important;}
+
+  .outputs-flex{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media (max-width:640px){ .outputs-flex{grid-template-columns:1fr;} }
+
+  .min-price-box{
+    background:var(--paper-2);border-left:3px solid var(--key);padding:14px 16px;
+    border-radius:0 3px 3px 0;margin-top:10px;
+  }
+  .min-price-box .val{font-family:var(--mono);font-size:22px;font-weight:700;}
+
+  .markup-inputs{display:flex;gap:16px;margin-bottom:18px;}
+  .markup-inputs .field{flex:1;margin-bottom:0;}
+
+  .profit-good{color:var(--good);}
+  .profit-bad{color:var(--bad);}
+
+  .cmyk-dots{display:flex;gap:4px;}
+  .cmyk-dots span{width:9px;height:9px;border-radius:50%;display:inline-block;}
+
+  details{margin-top:20px;}
+  summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-soft);padding:8px 0;user-select:none;}
+  summary:hover{color:var(--ink);}
+  table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;}
+  th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;}
+  th{font-weight:600;color:var(--ink-soft);text-transform:uppercase;font-size:10px;letter-spacing:.05em;}
+  td input{padding:5px 6px;font-size:12px;width:80px;}
+  .settings-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+
+  button{
+    font-family:var(--sans);font-size:13px;font-weight:600;padding:9px 16px;border-radius:3px;
+    border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;
+  }
+  button.secondary{background:#fff;color:var(--ink);}
+  button:hover{opacity:.85;}
+  #importFile{display:none;}
+
+  .placement-card{border:1px solid var(--line);border-radius:3px;padding:14px;margin-bottom:12px;}
+  .placement-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .placement-card-head strong{font-size:13px;}
+  .placement-card-head .actions{display:flex;gap:8px;}
+  .placement-card-head button{padding:4px 10px;font-size:11px;}
+
+  footer{margin-top:36px;font-size:12px;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:16px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="title-block">
+      <h1>Калькулятор себестоимости печати</h1>
+      <p>Нанесения → тираж → себестоимость, минимальная цена, наценка</p>
+    </div>
+    <svg class="regmark" viewBox="0 0 56 56">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#1A1A1A" stroke-width="1.5"/>
+      <circle cx="28" cy="28" r="10" fill="none" stroke="#1A1A1A" stroke-width="1.5"/>
+      <line x1="28" y1="0" x2="28" y2="14" stroke="#1A1A1A" stroke-width="1.5"/>
+      <line x1="28" y1="42" x2="28" y2="56" stroke="#1A1A1A" stroke-width="1.5"/>
+      <line x1="0" y1="28" x2="14" y2="28" stroke="#1A1A1A" stroke-width="1.5"/>
+      <line x1="42" y1="28" x2="56" y2="28" stroke="#1A1A1A" stroke-width="1.5"/>
+      <circle cx="28" cy="28" r="3" fill="#EC008C"/>
+    </svg>
+  </header>
+
+  <div class="grid">
+
+    <!-- LEFT: INPUTS -->
+    <div>
+      <div class="card">
+        <h2>Параметры заказа</h2>
+        <div class="field">
+          <label for="qty">Тираж, шт</label>
+          <input type="number" id="qty" min="1" value="30">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label for="blankCost">Стоимость изделия под печать, ₽/шт</label>
+          <input type="number" id="blankCost" min="0" value="500">
+          <div class="hint" id="blankCostHint">Заготовка (футболка, кружка, ремувка и т.д.) — вводится вручную, один раз на изделие</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Нанесения на изделии</h2>
+        <div id="placementsList"></div>
+        <button class="secondary" id="addPlacementBtn" style="width:100%;">+ Добавить нанесение</button>
+        <div class="hint" style="margin-top:10px;">Например: печать спереди и печать сзади — два отдельных нанесения на одном изделии. Кнопка «Дублировать» быстро создаёт второе такое же нанесение.</div>
+      </div>
+
+      <details id="project111Details">
+        <summary>🔍 Сверка с методом «Проект111» (−40%)</summary>
+        <div class="card" style="margin-top:0;border-top:none;border-top-left-radius:0;border-top-right-radius:0;">
+          <div class="field">
+            <label for="project111Price">Цена по калькулятору Проект111, ₽ за весь тираж</label>
+            <input type="number" id="project111Price" min="0" value="0" placeholder="Вставьте цену с сайта">
+          </div>
+          <div class="row"><span>Цена продажи (минус 40%), за тираж</span><span id="project111Result">0 ₽</span></div>
+          <button class="secondary" id="useProject111Btn" style="margin-top:10px;width:100%;">Подставить как цену продажи за шт</button>
+          <div class="hint" style="margin-top:10px;">
+            Независимый метод расчёта цены (не себестоимости): цена конкурента уже содержит его наценку, минус 40% даёт готовую цену продажи. Удобно для сверки с основным расчётом справа — себестоимость и наценка там считаются отдельно друг от друга.
+          </div>
+        </div>
+      </details>
+
+      <details>
+        <summary>⚙ Настроить расценки по видам печати</summary>
+        <div class="card" style="margin-top:0;border-top:none;border-top-left-radius:0;border-top-right-radius:0;">
+          <table id="pricingTable">
+            <thead>
+              <tr>
+                <th>Вид печати</th>
+                <th>Подготовка, ₽</th>
+                <th>Трафарет/цвет, ₽</th>
+                <th>Краска/цвет, ₽ за шт</th>
+                <th>₽ за см²/шт</th>
+                <th>Баз. ₽/шт</th>
+                <th>Мин. наценка %</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="hint" style="margin-top:10px;">DTF настраивается отдельно ниже — у него другая модель расценок (прайс-таблица поставщика).</div>
+        </div>
+      </details>
+
+      <details>
+        <summary>⚙ Прайс поставщика DTF (формат × тираж)</summary>
+        <div class="card" style="margin-top:0;border-top:none;border-top-left-radius:0;border-top-right-radius:0;">
+          <table id="dtfTable">
+            <thead><tr id="dtfTableHead"></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="hint" style="margin-top:6px;">Оставьте поле пустым, если формат «по запросу» у поставщика (например A2).</div>
+
+          <div style="display:flex;gap:16px;margin-top:18px;">
+            <div class="field" style="flex:1;">
+              <label for="dtfMarkupPct">Наценка на прайс поставщика, %</label>
+              <input type="number" id="dtfMarkupPct" value="30">
+            </div>
+            <div class="field" style="flex:1;">
+              <label for="dtfPressFee">Плата за прижим станка, ₽/шт</label>
+              <input type="number" id="dtfPressFee" value="30">
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <div class="settings-actions">
+        <button class="secondary" id="exportBtn">Экспортировать настройки (JSON)</button>
+        <button class="secondary" id="importBtn">Импортировать настройки</button>
+        <button class="secondary" id="resetBtn">Сбросить по умолчанию</button>
+        <input type="file" id="importFile" accept="application/json">
+      </div>
+    </div>
+
+    <!-- RIGHT: OUTPUTS -->
+    <div>
+      <div class="card">
+        <h2>Себестоимость</h2>
+        <div class="hero-number">
+          <span class="val" id="costPerUnit">0</span>
+          <span class="unit">₽ / шт</span>
+        </div>
+        <div class="hero-sub" id="costTotalLine">Итого по тиражу: 0 ₽</div>
+        <div class="breakdown" id="breakdown"></div>
+      </div>
+
+      <div class="card outputs-flex">
+        <div>
+          <h2>Минимально допустимая цена</h2>
+          <div class="min-price-box">
+            <div class="val" id="minPrice">0 ₽</div>
+            <div class="hint" id="minPriceHint"></div>
+          </div>
+        </div>
+        <div>
+          <h2>
+            <span class="cmyk-dots">
+              <span style="background:var(--cyan)"></span>
+              <span style="background:var(--magenta)"></span>
+              <span style="background:var(--yellow)"></span>
+              <span style="background:var(--key)"></span>
+            </span>
+            Коммерческая наценка
+          </h2>
+          <div class="markup-inputs">
+            <div class="field">
+              <label for="markupPct">Наценка, %</label>
+              <input type="number" id="markupPct" value="40">
+            </div>
+            <div class="field">
+              <label for="sellPrice">Цена продажи, ₽/шт</label>
+              <input type="number" id="sellPrice" value="0">
+            </div>
+          </div>
+          <div class="row"><span>Прибыль за шт</span><span id="profitUnit">0 ₽</span></div>
+          <div class="row"><span>Прибыль за тираж</span><span id="profitTotal">0 ₽</span></div>
+          <div class="row"><span>Выручка за тираж</span><span id="revenueTotal">0 ₽</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer id="footerNote"></footer>
+
+</div>
+
+<script>
+/* ---------- DTF: прайс-таблица поставщика (формат × тираж) ---------- */
+const DTF_FORMATS = [
+  {key:'a6', label:'A6 (до 10×15 см)', short:10, long:15},
+  {key:'a5', label:'A5 (до 15×20 см)', short:15, long:20},
+  {key:'a4', label:'A4 (до 20×30 см)', short:20, long:30},
+  {key:'a3', label:'A3 (до 30×42 см)', short:30, long:42},
+  {key:'a2', label:'A2 (до 40×60 см)', short:40, long:60}
+];
+const DTF_TIERS = [
+  {key:'t1', label:'1–2 шт', min:1, max:2},
+  {key:'t2', label:'3–4 шт', min:3, max:4},
+  {key:'t3', label:'от 5 шт', min:5, max:14},
+  {key:'t4', label:'от 15 шт', min:15, max:29},
+  {key:'t5', label:'от 30 шт', min:30, max:49},
+  {key:'t6', label:'от 50 шт', min:50, max:69},
+  {key:'t7', label:'от 70 шт', min:70, max:99},
+  {key:'t8', label:'от 100 шт', min:100, max:Infinity}
+];
+function pickDtfFormat(l, w){
+  const short = Math.min(l,w), long = Math.max(l,w);
+  for(const f of DTF_FORMATS){ if(short<=f.short && long<=f.long) return f; }
+  return null;
+}
+function pickDtfTier(qty){
+  return DTF_TIERS.find(t=>qty>=t.min && qty<=t.max) || DTF_TIERS[DTF_TIERS.length-1];
+}
+
+/* ---------- Пакеты: фиксированный прайс (тираж × цветность × цвет пакета) ---------- */
+const BAG_SIZES = [
+  {key:'30x40', label:'ПВД 30×40 (поле печати 24×24 см)'},
+  {key:'40x50', label:'ПВД 40×50 (поле печати 27×30 см)'},
+  {key:'50x60', label:'ПВД 50×60 / 60×50 (поле печати 28×35 см)'},
+  {key:'20x30', label:'ПВД 20×30 (поле печати 15×15 см)'}
+];
+const BAG_TIERS = [100, 200, 300, 500, 1000, 5000];
+const BAG_COLOR_COUNTS = [1, 2, 3, 4, 5];
+const BAG_PRICE_TABLE = {
+  "30x40": {
+    100:{1:{white:29.60,color:31.60},2:{white:42.50,color:44.40},3:{white:55.40,color:57.40},4:{white:68.60,color:70.40},5:{white:81.20,color:83.30}},
+    200:{1:{white:25.80,color:27.70},2:{white:35.60,color:37.60},3:{white:45.10,color:47.00},4:{white:54.80,color:56.70},5:{white:64.50,color:66.70}},
+    300:{1:{white:24.20,color:26.30},2:{white:32.90,color:35.00},3:{white:41.50,color:43.50},4:{white:50.00,color:52.20},5:{white:58.80,color:60.80}},
+    500:{1:{white:22.80,color:24.70},2:{white:30.60,color:32.50},3:{white:38.30,color:40.20},4:{white:46.10,color:48.00},5:{white:53.70,color:55.70}},
+    1000:{1:{white:20.80,color:21.90},2:{white:27.70,color:29.50},3:{white:34.80,color:36.30},4:{white:41.90,color:43.40},5:{white:49.20,color:50.50}},
+    5000:{1:{white:20.30,color:21.80},2:{white:27.20,color:27.70},3:{white:33.70,color:34.50},4:{white:40.30,color:41.10},5:{white:46.70,color:47.70}}
+  },
+  "40x50": {
+    100:{1:{white:34.80,color:40.00},2:{white:47.90,color:53.00},3:{white:60.80,color:65.90},4:{white:73.70,color:78.80},5:{white:86.60,color:91.70}},
+    200:{1:{white:31.50,color:36.30},2:{white:41.20,color:46.10},3:{white:50.80,color:55.70},4:{white:60.50,color:65.40},5:{white:70.20,color:75.10}},
+    300:{1:{white:29.90,color:35.10},2:{white:38.50,color:43.80},3:{white:47.00,color:52.20},4:{white:55.70,color:60.90},5:{white:64.30,color:69.60}},
+    500:{1:{white:28.40,color:32.10},2:{white:36.30,color:40.00},3:{white:43.80,color:47.60},4:{white:51.60,color:55.40},5:{white:59.30,color:63.00}},
+    1000:{1:{white:25.10,color:29.90},2:{white:32.10,color:36.90},3:{white:39.20,color:44.00},4:{white:46.30,color:51.10},5:{white:53.40,color:58.20}},
+    5000:{1:{white:23.80,color:28.30},2:{white:30.50,color:34.80},3:{white:36.90,color:41.40},4:{white:43.50,color:47.90},5:{white:50.20,color:54.50}}
+  },
+  "50x60": {
+    100:{1:{white:46.70,color:50.60},2:{white:59.60,color:63.50},3:{white:72.50,color:76.40},4:{white:85.60,color:89.30},5:{white:98.50,color:102.30}},
+    200:{1:{white:43.00,color:46.30},2:{white:52.10,color:56.00},3:{white:61.80,color:65.70},4:{white:71.50,color:75.30},5:{white:81.20,color:85.00}},
+    300:{1:{white:40.20,color:43.80},2:{white:48.80,color:52.50},3:{white:57.50,color:61.10},4:{white:66.00,color:69.60},5:{white:74.70,color:78.30}},
+    500:{1:{white:37.90,color:41.20},2:{white:45.50,color:48.90},3:{white:53.40,color:56.60},4:{white:61.10,color:64.30},5:{white:68.90,color:72.10}},
+    1000:{1:{white:35.40,color:38.20},2:{white:42.40,color:45.30},3:{white:50.00,color:52.40},4:{white:56.60,color:59.50},5:{white:63.80,color:66.70}},
+    5000:{1:{white:34.50,color:37.40},2:{white:41.10,color:44.00},3:{white:47.70,color:50.50},4:{white:54.10,color:57.20},5:{white:60.90,color:63.80}}
+  },
+  "20x30": {
+    100:{1:{white:28.90,color:30.90},2:{white:41.80,color:43.60},3:{white:54.70,color:56.70},4:{white:68.00,color:69.70},5:{white:80.50,color:82.60}},
+    200:{1:{white:25.10,color:27.00},2:{white:34.90,color:36.90},3:{white:44.40,color:46.30},4:{white:54.10,color:56.00},5:{white:63.80,color:66.00}},
+    300:{1:{white:23.50,color:25.60},2:{white:32.20,color:34.30},3:{white:40.80,color:42.80},4:{white:49.30,color:51.50},5:{white:58.10,color:60.10}},
+    500:{1:{white:22.10,color:24.00},2:{white:29.90,color:31.80},3:{white:37.60,color:39.50},4:{white:45.40,color:47.30},5:{white:53.00,color:55.00}},
+    1000:{1:{white:20.10,color:21.20},2:{white:27.00,color:28.80},3:{white:34.10,color:35.60},4:{white:41.20,color:42.70},5:{white:48.50,color:49.80}},
+    5000:{1:{white:19.60,color:21.10},2:{white:26.50,color:27.00},3:{white:33.00,color:33.80},4:{white:39.60,color:40.40},5:{white:46.00,color:47.00}}
+  }
+};
+function pickBagTier(qty){
+  if (qty < 100) return 100;
+  let tier = BAG_TIERS[0];
+  for (const t of BAG_TIERS){
+    if (t <= qty) tier = t; else break;
+  }
+  return tier;
+}
+
+/* ---------- Конфигурация видов печати ---------- */
+const DEFAULT_PRICING = {
+  "dtf": {
+    label: "DTF-печать",
+    pricingMode:"table",
+    colorDependent:false, areaDependent:true,
+    minMarginPct:25,
+    supplierMarkupPct:30,
+    pressFee:30,
+    table:{
+      a6:{t1:90, t2:90, t3:80, t4:75, t5:65, t6:60, t7:50, t8:40},
+      a5:{t1:180,t2:170,t3:150,t4:140,t5:120,t6:100,t7:90, t8:80},
+      a4:{t1:325,t2:290,t3:250,t4:200,t5:180,t6:170,t7:150,t8:145},
+      a3:{t1:675,t2:575,t3:525,t4:425,t5:375,t6:350,t7:325,t8:300},
+      a2:{t1:null,t2:null,t3:null,t4:null,t5:null,t6:null,t7:null,t8:null}
+    }
+  },
+  "uvdtf": {
+    label: "УФ-DTF-печать",
+    colorDependent:false, areaDependent:true,
+    setupCost:0, costPerColor:0, costPerColorPrint:0,
+    costPerCm2:1.8, costPerUnit:18, minMarginPct:25
+  },
+  "uv": {
+    label: "УФ-печать (прямая на изделие)",
+    colorDependent:false, areaDependent:true,
+    setupCost:300, costPerColor:0, costPerColorPrint:0,
+    costPerCm2:1.5, costPerUnit:20, minMarginPct:30
+  },
+  "tampo": {
+    label: "Тампопечать",
+    colorDependent:true, areaDependent:false,
+    setupCost:200, costPerColor:600, costPerColorPrint:2.5,
+    costPerCm2:0, costPerUnit:8, minMarginPct:30
+  },
+  "decal": {
+    label: "Деколь",
+    colorDependent:false, areaDependent:true,
+    setupCost:150, costPerColor:0, costPerColorPrint:0,
+    costPerCm2:0.9, costPerUnit:10, minMarginPct:25
+  },
+  "direct": {
+    label: "Прямая печать (DTG)",
+    colorDependent:false, areaDependent:true,
+    setupCost:100, costPerColor:0, costPerColorPrint:0,
+    costPerCm2:1.0, costPerUnit:12, minMarginPct:25
+  },
+  "screen": {
+    label: "Шелкография",
+    colorDependent:true, areaDependent:false,
+    setupCost:150, costPerColor:900, costPerColorPrint:3,
+    costPerCm2:0, costPerUnit:6, minMarginPct:30
+  },
+  "emboss": {
+    label: "Тиснение",
+    colorDependent:false, areaDependent:true,
+    setupCost:1200, costPerColor:0, costPerColorPrint:0,
+    costPerCm2:0.3, costPerUnit:9, minMarginPct:35
+  },
+  "laser": {
+    label: "Лазерная гравировка",
+    colorDependent:false, areaDependent:true,
+    setupCost:100, costPerColor:0, costPerColorPrint:0,
+    costPerCm2:2.2, costPerUnit:5, minMarginPct:30
+  },
+  "sublimation": {
+    label: "Сублимация",
+    colorDependent:false, areaDependent:true,
+    setupCost:100, costPerColor:0, costPerColorPrint:0,
+    costPerCm2:1.3, costPerUnit:12, minMarginPct:25
+  },
+  "bags": {
+    label: "Печать на пакетах",
+    pricingMode:"bags",
+    minMarginPct:0,
+    table: BAG_PRICE_TABLE
+  }
+};
+
+let PRICING = JSON.parse(JSON.stringify(DEFAULT_PRICING));
+let placements = [ {type:'dtf', length:10, width:15, colors:1} ];
+
+const el = id => document.getElementById(id);
+const fmt = n => n.toLocaleString('ru-RU', {maximumFractionDigits:2});
+
+el('footerNote').textContent =
+  'Все расчёты выполняются локально в браузере. Для DTF себестоимость нанесения = прайс поставщика (по формату и тиражу) × (1 + наценка на прайс) + плата за прижим станка. Для пакетов цена берётся фиксированной из прайса поставщика (тираж × цветность × цвет пакета) — без наценки. Для остальных видов печати: (подготовка + трафарет×цвета)/тираж + краска×цвета + материал×см² + базовая ставка. Себестоимость изделия считается один раз на заказ, себестоимость каждого нанесения — отдельно и суммируется.';
+
+/* ---------- Вычисление себестоимости одного нанесения ---------- */
+function computeTypeCost(typeKey, {qty, lengthCm, widthCm, colors, bagSize, colorsCount, bagColor}){
+  const p = PRICING[typeKey];
+  const area = lengthCm * widthCm;
+
+  if (p.pricingMode === 'bags'){
+    const tier = pickBagTier(qty);
+    const approxHigh = qty > BAG_TIERS[BAG_TIERS.length-1];
+    const belowMin = qty < 50;
+    const belowFirstTier = qty >= 50 && qty < 100;
+    const sizeLabel = BAG_SIZES.find(s=>s.key===bagSize).label;
+    const price = p.table[bagSize][tier][colorsCount][bagColor];
+    let note = '';
+    if (approxHigh) note = ' (тираж больше 5000 — цена по тарифу для 5000 шт, уточните точную цену у поставщика)';
+    else if (belowMin) note = ' (тираж ниже минимального заказа в 50 шт — цена дана по тарифу для 100 шт, уточните у поставщика)';
+    else if (belowFirstTier) note = ' (тираж меньше 100 — цена по тарифу для 100 шт)';
+    const tierWord = (belowMin || belowFirstTier) ? `тариф для ${tier} шт` : `тариф от ${tier} шт`;
+    return {
+      costPerUnit: price,
+      fixedPrice: true,
+      info: `${sizeLabel} · ${tierWord} · ${colorsCount} цв. печати · пакет ${bagColor==='white'?'белый':'цветной'}${note}`,
+      lines: [
+        {label:'Фиксированная цена поставщика (без наценки)', value:price}
+      ]
+    };
+  }
+
+  if (p.pricingMode === 'table'){
+    const format = pickDtfFormat(lengthCm, widthCm);
+    if (!format){
+      return { error:'Размер превышает A2 (40×60 см) — уточните цену у поставщика напрямую', costPerUnit:0, lines:[], info:null };
+    }
+    const tier = pickDtfTier(qty);
+    const tablePrice = p.table[format.key][tier.key];
+    if (tablePrice === null){
+      return { error:`Формат ${format.label} — цена «по запросу» у поставщика, впишите вручную в настройках`, costPerUnit:0, lines:[], info:`${format.label} · ${tier.label}` };
+    }
+    const markupAmount = tablePrice * p.supplierMarkupPct/100;
+    const cost = tablePrice + markupAmount + p.pressFee;
+    return {
+      costPerUnit: cost,
+      info: `${format.label} · ${tier.label}`,
+      lines: [
+        {label:'Прайс поставщика', value:tablePrice},
+        {label:`Наценка на прайс поставщика (${p.supplierMarkupPct}%)`, value:markupAmount},
+        {label:'Плата за прижим станка', value:p.pressFee}
+      ]
+    };
+  }
+
+  const clisheTotal = p.colorDependent ? p.costPerColor * colors : 0;
+  const setupPerUnit = (p.setupCost + clisheTotal) / qty;
+  const colorPrintPerUnit = p.colorDependent ? p.costPerColorPrint * colors : 0;
+  const areaPerUnit = p.areaDependent ? p.costPerCm2 * area : 0;
+  const basePerUnit = p.costPerUnit;
+  const cost = setupPerUnit + colorPrintPerUnit + areaPerUnit + basePerUnit;
+
+  const lines = [];
+  if (setupPerUnit) lines.push({label:'Подготовка / трафарет (÷ тираж)', value:setupPerUnit});
+  if (p.colorDependent) lines.push({label:'Краска по цветам', value:colorPrintPerUnit});
+  if (p.areaDependent) lines.push({label:'Материал по площади', value:areaPerUnit});
+  lines.push({label:'Базовая ставка (работа/машина)', value:basePerUnit});
+
+  return { costPerUnit:cost, lines, info:null };
+}
+
+/* ---------- Рендер списка нанесений ---------- */
+function typeOptionsHTML(selected){
+  return Object.keys(PRICING).map(k=>`<option value="${k}" ${k===selected?'selected':''}>${PRICING[k].label}</option>`).join('');
+}
+
+function bagSizeOptionsHTML(selected){
+  return BAG_SIZES.map(s=>`<option value="${s.key}" ${s.key===selected?'selected':''}>${s.label}</option>`).join('');
+}
+function bagColorCountOptionsHTML(selected){
+  return BAG_COLOR_COUNTS.map(c=>`<option value="${c}" ${c===selected?'selected':''}>${c}</option>`).join('');
+}
+
+function renderPlacements(){
+  const container = el('placementsList');
+  container.innerHTML = placements.map((pl, idx)=>{
+    const p = PRICING[pl.type];
+    const head = `
+      <div class="placement-card-head">
+        <strong>Нанесение ${idx+1}</strong>
+        <div class="actions">
+          <button type="button" class="secondary dup-btn" data-idx="${idx}">Дублировать</button>
+          ${placements.length>1 ? `<button type="button" class="secondary rm-btn" data-idx="${idx}">Удалить</button>` : ''}
+        </div>
+      </div>
+      <div class="field">
+        <label>Тип нанесения</label>
+        <select class="pl-type" data-idx="${idx}">${typeOptionsHTML(pl.type)}</select>
+      </div>`;
+
+    if (p.pricingMode === 'bags'){
+      return `<div class="placement-card">${head}
+        <div class="field">
+          <label>Размер пакета</label>
+          <select class="pl-bagSize" data-idx="${idx}">${bagSizeOptionsHTML(pl.bagSize)}</select>
+        </div>
+        <div class="field">
+          <label>Количество цветов печати</label>
+          <select class="pl-colorsCount" data-idx="${idx}">${bagColorCountOptionsHTML(pl.colorsCount)}</select>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Цвет пакета</label>
+          <select class="pl-bagColor" data-idx="${idx}">
+            <option value="white" ${pl.bagColor==='white'?'selected':''}>Белый</option>
+            <option value="color" ${pl.bagColor==='color'?'selected':''}>Цветной</option>
+          </select>
+          <div class="hint">Цена фиксированная (прайс поставщика), наценка на эту часть заказа не начисляется</div>
+        </div>
+      </div>`;
+    }
+
+    return `
+    <div class="placement-card">
+      ${head}
+      <div class="field">
+        <label>Размер, см</label>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input type="number" class="pl-length" data-idx="${idx}" min="0" value="${pl.length}" placeholder="Длина" ${p.areaDependent?'':'disabled'}>
+          <span style="font-family:var(--mono);color:var(--ink-soft);">×</span>
+          <input type="number" class="pl-width" data-idx="${idx}" min="0" value="${pl.width}" placeholder="Ширина" ${p.areaDependent?'':'disabled'}>
+        </div>
+        ${p.areaDependent ? '' : '<div class="hint">Для этого вида печати площадь не влияет на себестоимость</div>'}
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Количество цветов</label>
+        <input type="number" class="pl-colors" data-idx="${idx}" min="1" value="${pl.colors}" ${p.colorDependent?'':'disabled'}>
+        ${p.colorDependent ? '' : '<div class="hint">Для этого вида печати количество цветов не влияет на себестоимость</div>'}
+      </div>
+    </div>`;
+  }).join('');
+
+  container.querySelectorAll('.pl-type').forEach(s=>s.addEventListener('change', e=>{
+    const idx = +e.target.dataset.idx;
+    const newType = e.target.value;
+    const p = PRICING[newType];
+    placements[idx].type = newType;
+    if (p.pricingMode === 'bags'){
+      if(!placements[idx].bagSize) placements[idx].bagSize = BAG_SIZES[0].key;
+      if(!placements[idx].colorsCount) placements[idx].colorsCount = 1;
+      if(!placements[idx].bagColor) placements[idx].bagColor = 'white';
+    } else {
+      if(placements[idx].length === undefined) placements[idx].length = 10;
+      if(placements[idx].width === undefined) placements[idx].width = 10;
+      if(placements[idx].colors === undefined) placements[idx].colors = 1;
+    }
+    renderPlacements();
+    calculate();
+  }));
+  container.querySelectorAll('.pl-length').forEach(inp=>inp.addEventListener('input', e=>{
+    placements[+e.target.dataset.idx].length = parseFloat(e.target.value)||0;
+    calculate();
+  }));
+  container.querySelectorAll('.pl-width').forEach(inp=>inp.addEventListener('input', e=>{
+    placements[+e.target.dataset.idx].width = parseFloat(e.target.value)||0;
+    calculate();
+  }));
+  container.querySelectorAll('.pl-colors').forEach(inp=>inp.addEventListener('input', e=>{
+    placements[+e.target.dataset.idx].colors = parseFloat(e.target.value)||1;
+    calculate();
+  }));
+  container.querySelectorAll('.pl-bagSize').forEach(s=>s.addEventListener('change', e=>{
+    placements[+e.target.dataset.idx].bagSize = e.target.value;
+    calculate();
+  }));
+  container.querySelectorAll('.pl-colorsCount').forEach(s=>s.addEventListener('change', e=>{
+    placements[+e.target.dataset.idx].colorsCount = parseInt(e.target.value)||1;
+    calculate();
+  }));
+  container.querySelectorAll('.pl-bagColor').forEach(s=>s.addEventListener('change', e=>{
+    placements[+e.target.dataset.idx].bagColor = e.target.value;
+    calculate();
+  }));
+  container.querySelectorAll('.dup-btn').forEach(btn=>btn.addEventListener('click', e=>{
+    const idx = +e.target.dataset.idx;
+    placements.splice(idx+1, 0, JSON.parse(JSON.stringify(placements[idx])));
+    renderPlacements();
+    calculate();
+  }));
+  container.querySelectorAll('.rm-btn').forEach(btn=>btn.addEventListener('click', e=>{
+    placements.splice(+e.target.dataset.idx, 1);
+    renderPlacements();
+    calculate();
+  }));
+}
+
+el('addPlacementBtn').addEventListener('click', ()=>{
+  const last = placements[placements.length-1];
+  placements.push(last ? JSON.parse(JSON.stringify(last)) : {type:'dtf', length:10, width:10, colors:1});
+  renderPlacements();
+  calculate();
+});
+
+/* ---------- Настройки: общая таблица (все виды, кроме DTF) ---------- */
+function renderPricingTable(){
+  const tbody = document.querySelector('#pricingTable tbody');
+  tbody.innerHTML = '';
+  Object.keys(PRICING).forEach(key=>{
+    const p = PRICING[key];
+    if (p.pricingMode === 'table' || p.pricingMode === 'bags') return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${p.label}</td>
+      <td><input type="number" data-key="${key}" data-field="setupCost" value="${p.setupCost}"></td>
+      <td><input type="number" data-key="${key}" data-field="costPerColor" value="${p.costPerColor}" ${p.colorDependent?'':'disabled'}></td>
+      <td><input type="number" data-key="${key}" data-field="costPerColorPrint" value="${p.costPerColorPrint}" ${p.colorDependent?'':'disabled'}></td>
+      <td><input type="number" data-key="${key}" data-field="costPerCm2" value="${p.costPerCm2}" ${p.areaDependent?'':'disabled'}></td>
+      <td><input type="number" data-key="${key}" data-field="costPerUnit" value="${p.costPerUnit}"></td>
+      <td><input type="number" data-key="${key}" data-field="minMarginPct" value="${p.minMarginPct}"></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const {key, field} = e.target.dataset;
+      PRICING[key][field] = parseFloat(e.target.value)||0;
+      calculate();
+    });
+  });
+}
+
+/* ---------- Настройки: прайс поставщика DTF ---------- */
+function renderDtfTable(){
+  const p = PRICING.dtf;
+  el('dtfTableHead').innerHTML = '<th>Тираж</th>' + DTF_FORMATS.map(f=>`<th>${f.label}</th>`).join('');
+
+  const tbody = document.querySelector('#dtfTable tbody');
+  tbody.innerHTML = '';
+  DTF_TIERS.forEach(t=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${t.label}</td>` + DTF_FORMATS.map(f=>{
+      const v = p.table[f.key][t.key];
+      return `<td><input type="number" data-format="${f.key}" data-tier="${t.key}" value="${v===null?'':v}" placeholder="по запросу"></td>`;
+    }).join('');
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const {format, tier} = e.target.dataset;
+      const raw = e.target.value.trim();
+      p.table[format][tier] = raw === '' ? null : (parseFloat(raw)||0);
+      calculate();
+    });
+  });
+
+  el('dtfMarkupPct').value = p.supplierMarkupPct;
+  el('dtfPressFee').value = p.pressFee;
+}
+el('dtfMarkupPct').addEventListener('input', e=>{ PRICING.dtf.supplierMarkupPct = parseFloat(e.target.value)||0; calculate(); });
+el('dtfPressFee').addEventListener('input', e=>{ PRICING.dtf.pressFee = parseFloat(e.target.value)||0; calculate(); });
+
+/* ---------- Наценка / прибыль ---------- */
+function applyMarkupAndProfit(costPerUnit, qty){
+  if (document.activeElement.id === 'sellPrice'){
+    const sell = parseFloat(el('sellPrice').value)||0;
+    const pct = costPerUnit>0 ? ((sell-costPerUnit)/costPerUnit*100) : 0;
+    el('markupPct').value = fmt(pct);
+  } else {
+    const pct = parseFloat(el('markupPct').value)||0;
+    const sell = costPerUnit * (1+pct/100);
+    el('sellPrice').value = sell.toFixed(2);
+  }
+
+  const sellPrice = parseFloat(el('sellPrice').value)||0;
+  const profitUnit = sellPrice - costPerUnit;
+  const profitTotal = profitUnit * qty;
+  const revenueTotal = sellPrice * qty;
+
+  const profitClass = profitUnit >= 0 ? 'profit-good' : 'profit-bad';
+  el('profitUnit').textContent = `${fmt(profitUnit)} ₽`;
+  el('profitUnit').className = profitClass;
+  el('profitTotal').textContent = `${fmt(profitTotal)} ₽`;
+  el('profitTotal').className = profitClass;
+  el('revenueTotal').textContent = `${fmt(revenueTotal)} ₽`;
+}
+
+/* ---------- Сверка с Проект111 ---------- */
+function updateProject111(){
+  const price = Math.max(0, parseFloat(el('project111Price').value)||0);
+  el('project111Result').textContent = `${fmt(price * 0.6)} ₽`;
+}
+el('project111Price').addEventListener('input', updateProject111);
+el('useProject111Btn').addEventListener('click', ()=>{
+  const qty = Math.max(1, parseFloat(el('qty').value)||1);
+  const totalPrice = Math.max(0, parseFloat(el('project111Price').value)||0);
+  const perUnit = (totalPrice * 0.6) / qty;
+  el('sellPrice').value = perUnit.toFixed(2);
+  calculate();
+});
+
+/* ---------- Главный расчёт ---------- */
+function calculate(){
+  const allBags = placements.length>0 && placements.every(pl => PRICING[pl.type].pricingMode === 'bags');
+  const blankInput = el('blankCost');
+  if (allBags){
+    if (blankInput.dataset.savedValue === undefined){
+      blankInput.dataset.savedValue = blankInput.value;
+    }
+    blankInput.value = 0;
+    blankInput.disabled = true;
+    el('blankCostHint').textContent = 'Для заказа только из пакетов стоимость изделия не применяется — цена пакета уже фиксированная';
+  } else {
+    if (blankInput.dataset.savedValue !== undefined){
+      blankInput.value = blankInput.dataset.savedValue;
+      delete blankInput.dataset.savedValue;
+    }
+    blankInput.disabled = false;
+    el('blankCostHint').textContent = 'Заготовка (футболка, кружка, ремувка и т.д.) — вводится вручную, один раз на изделие';
+  }
+
+  const qty = Math.max(1, parseFloat(el('qty').value)||1);
+  const blankCost = Math.max(0, parseFloat(el('blankCost').value)||0);
+  updateProject111();
+
+  let totalPrintCost = 0;
+  let hasError = false;
+  let breakdownHtml = `<div class="row total"><span>Стоимость изделия под печать</span><span>${fmt(blankCost)} ₽/шт</span></div>`;
+
+  placements.forEach((pl, idx)=>{
+    const p = PRICING[pl.type];
+    const r = computeTypeCost(pl.type, {qty, lengthCm: pl.length, widthCm: pl.width, colors: pl.colors, bagSize: pl.bagSize, colorsCount: pl.colorsCount, bagColor: pl.bagColor});
+    const title = `Нанесение ${idx+1}: ${p.label}${r.info ? ' — ' + r.info : ''}`;
+
+    if (r.error){
+      hasError = true;
+      breakdownHtml += `<div class="row total" style="color:var(--bad);"><span>${title}</span><span>${r.error}</span></div>`;
+      return;
+    }
+    totalPrintCost += r.costPerUnit;
+    breakdownHtml += `<div class="row total"><span>${title}</span><span>${fmt(r.costPerUnit)} ₽/шт</span></div>`;
+    r.lines.forEach(l=>{
+      breakdownHtml += `<div class="row" style="padding-left:14px;"><span>${l.label}</span><span>${fmt(l.value)} ₽/шт</span></div>`;
+    });
+  });
+
+  const costPerUnit = blankCost + totalPrintCost;
+  const costTotal = costPerUnit * qty;
+
+  el('costPerUnit').textContent = fmt(costPerUnit);
+  el('costTotalLine').textContent = hasError
+    ? `Итого по тиражу (${qty} шт): ${fmt(costTotal)} ₽ — внимание: не все нанесения посчитаны, см. разбивку ниже`
+    : `Итого по тиражу (${qty} шт): ${fmt(costTotal)} ₽`;
+  el('breakdown').innerHTML = breakdownHtml;
+
+  const usedMinMargins = placements.map(pl => PRICING[pl.type].minMarginPct);
+  const minMarginPct = Math.max(...usedMinMargins);
+  const minPrice = costPerUnit * (1 + minMarginPct/100);
+  el('minPrice').textContent = `${fmt(minPrice)} ₽`;
+  el('minPriceHint').textContent = `Себестоимость + минимальная наценка ${minMarginPct}% (по самому строгому из применённых видов печати)`;
+
+  applyMarkupAndProfit(costPerUnit, qty);
+}
+
+['qty','blankCost','markupPct','sellPrice'].forEach(id=>{
+  el(id).addEventListener('input', calculate);
+});
+
+el('exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(PRICING, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pricing_settings.json';
+  a.click();
+});
+
+el('importBtn').addEventListener('click', ()=> el('importFile').click());
+el('importFile').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      PRICING = JSON.parse(reader.result);
+      renderPricingTable();
+      renderDtfTable();
+      renderPlacements();
+      calculate();
+    }catch(err){
+      alert('Не удалось прочитать файл настроек: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+});
+
+el('resetBtn').addEventListener('click', ()=>{
+  PRICING = JSON.parse(JSON.stringify(DEFAULT_PRICING));
+  renderPricingTable();
+  renderDtfTable();
+  renderPlacements();
+  calculate();
+});
+
+renderPlacements();
+renderPricingTable();
+renderDtfTable();
+calculate();
+</script>
+</body>
+</html>
